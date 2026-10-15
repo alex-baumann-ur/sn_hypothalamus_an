@@ -1,0 +1,61 @@
+"""Run Cell Ranger count for all samples listed in the sample sheet.
+
+Set PROJECT_DIR, CELLRANGER_FASTQ_DIR, CELLRANGER_REFERENCE, and optionally
+SAMPLE_SHEET and CELLRANGER_SAMPLE_SUFFIX in the environment. The sample sheet
+is a tab-separated file with columns caseID and #sampleName.
+"""
+
+import os
+from pathlib import Path
+
+import pandas as pd
+
+
+PROJECT_DIR = Path(os.environ.get("PROJECT_DIR", "path/to/project"))
+RAW_DATA_DIR = Path(os.environ.get("RAW_DATA_DIR", PROJECT_DIR / "data" / "raw"))
+FASTQ_DIR = Path(os.environ.get("CELLRANGER_FASTQ_DIR", PROJECT_DIR / "data" / "fastq"))
+REFERENCE = Path(os.environ.get("CELLRANGER_REFERENCE", "path/to/cellranger_reference"))
+CELLRANGER_DIR = Path(os.environ.get("CELLRANGER_DIR", PROJECT_DIR / "data" / "cellranger"))
+COMPLETION_DIR = Path(
+    os.environ.get("CELLRANGER_COMPLETION_DIR", PROJECT_DIR / "results" / "cellranger_done")
+)
+SAMPLE_SHEET = Path(
+    os.environ.get("SAMPLE_SHEET", RAW_DATA_DIR / "sample_sheet_CellRanger.tsv")
+)
+FASTQ_SAMPLE_SUFFIX = os.environ.get("CELLRANGER_SAMPLE_SUFFIX", "")
+CELLRANGER_THREADS = 28
+
+# Read in the sample sheet and create a dictionary mapping caseID to sample name
+sample_sheet = pd.read_csv(SAMPLE_SHEET, sep="\t", dtype=str)
+
+sample_dict = {caseID:sample_name for caseID, sample_name in zip(sample_sheet['caseID'], sample_sheet['#sampleName'])}
+SAMPLES = list(sample_sheet['caseID'])
+
+
+rule all:
+    input:
+        expand(str(COMPLETION_DIR / "{sample}_done.txt"), sample=SAMPLES),
+
+
+rule RunCellRanger:
+    input:
+        fastqs=str(FASTQ_DIR),
+        reference=str(REFERENCE),
+        out_dir = directory(str(CELLRANGER_DIR / "{sample}"))
+    threads: CELLRANGER_THREADS
+    message: "### Run Cell Ranger for sample {wildcards.sample} ###"
+    params: value = lambda wildcards: '%s' % sample_dict[wildcards.sample]
+    output:
+        done_file=str(COMPLETION_DIR / "{sample}_done.txt"),
+    shell:
+        """
+        cellranger count --id={wildcards.sample} \
+            --output-dir={output.out_dir} \
+            --transcriptome={input.reference} \
+            --fastqs={input.fastqs} \
+            --sample={params.value}_good \
+            --localcores={threads} \
+            --create-bam true
+        touch {output.done_file}
+        """
+
