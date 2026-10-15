@@ -6,7 +6,7 @@ Raw files at:
 
 ## Workflow
 
-1. Run [`CellRanger/Snakefile_CellRanger`](CellRanger/Snakefile_CellRanger) with a tab-separated sample sheet and a Cell Ranger reference genome.
+1. Run [`CellRanger/Snakefile_CellRanger`](CellRanger/Snakefile_CellRanger) with a tab-separated sample sheet and a Cell Ranger reference genome via Snakemake.
 2. Run [`00_seurat_analysis_integration.R`](00_seurat_analysis_integration.R) to import the filtered matrices, create and merge Seurat objects, and run mapscvi.
 3. Run [`01_hypomap_seurat_analysis.R`](01_hypomap_seurat_analysis.R) for Seurat integration and doublet detection.
 4. Run [`02_differential_expression_analysis.R`](02_differential_expression_analysis.R), then [`03_filtering_files.py`](03_filtering_files.py) to filter marker tables.
